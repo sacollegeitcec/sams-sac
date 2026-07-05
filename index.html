@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Attendance Workspace Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-light: #3b82f6;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --bg-main: #f3f4f6;
+      --bg-card: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); padding-bottom: 3rem; }
+    .hidden { display: none !important; }
+    .text-center { text-align: center; }
+    .text-muted { color: var(--text-muted); }
+    header { background-color: var(--primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .btn-logout { background: transparent; border: 1px solid white; color: white; padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; font-weight: 500; }
+    .container { max-width: 1200px; margin: 1.5rem auto; padding: 0 1rem; }
+    .card { background: var(--bg-card); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.875rem; }
+    .form-control { width: 100%; padding: 0.65rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 0.75rem; background-color: var(--primary); color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; gap: 0.5rem; font-size: 1rem; }
+    .btn:hover { opacity: 0.9; }
+    .btn-success { background-color: var(--success); }
+    .btn-danger { background-color: var(--danger); }
+    .camera-box { width: 100%; max-width: 320px; height: 240px; background: #e5e7eb; border-radius: 8px; margin: 1.5rem auto; overflow: hidden; position: relative; border: 2px dashed #9ca3af; }
+    #video { width: 100%; height: 100%; object-fit: cover; }
+    #photo-canvas { display: none; }
+    .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-top: 0.25rem; }
+    .badge-present { background-color: #d1fae5; color: #065f46; }
+    .badge-suspicious { background-color: #fee2e2; color: #991b1b; }
+    .badge-entry { background-color: #e0f2fe; color: #0369a1; }
+    .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: white; padding: 1.25rem; border-radius: 8px; text-align: center; border-left: 5px solid var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .stat-card.val-present { border-left-color: var(--success); }
+    .stat-card.val-suspicious { border-left-color: var(--danger); }
+    .stat-num { font-size: 2rem; font-weight: 700; margin-top: 0.25rem; }
+    .table-wrapper { width: 100%; overflow-x: auto; margin-top: 1rem; border: 1px solid #e5e7eb; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+    th, td { padding: 0.85rem 1rem; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+    th { background-color: #f8fafc; font-weight: 600; color: #475569; }
+    #toast { position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 1.5rem; border-radius: 6px; color: white; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); transform: translateY(200%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 99999; }
+    #toast.show { transform: translateY(0); }
+    .tab-btn { background: transparent; border: none; padding: 0.65rem 1.2rem; font-size: 0.95rem; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+    .action-icon { cursor: pointer; padding: 4px; border-radius: 4px; font-size: 1.3rem; display: inline-flex; align-items: center; vertical-align: middle; margin: 0 2px; }
+    .action-icon:hover { background: #f3f4f6; }
+  </style>
+</head>
+<body>
+
+  <div id="toast">Operational Alert</div>
+
+  <header id="app-header" class="hidden">
+    <h1 id="header-title" style="font-size: 1.3rem;">Attendance Hub</h1>
+    <button class="btn-logout" onclick="actions.executeLogout()">
+      <span class="material-icons">logout</span> Sign Out
+    </button>
+  </header>
+
+  <div class="container">
+    
+    <!-- SYSTEM BLOCK VIEW: LAYER 0 (LOGIN SYSTEM GATEWAY) -->
+    <div id="view-login" class="card" style="max-width: 420px; margin: 6rem auto;">
+      <h2 class="text-center" style="margin-bottom: 1.5rem; color: var(--primary); font-weight: 700;">System Authentication</h2>
+      <form id="form-login" onsubmit="actions.executeLogin(event)">
+        <div class="form-group">
+          <label>Email Address / Username</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Enter registration identifier" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Access Password Token</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label>Target Workspace Security Domain Scope</label>
+          <select id="login-role" class="form-control">
+            <option value="student">Student Portal Gate</option>
+            <option value="admin">Institutional Administrator</option>
+          </select>
+        </div>
+        <button type="submit" class="btn">
+          <span class="material-icons">lock_open</span> Authenticate Credentials
+        </button>
+      </form>
+    </div>
+
+    <!-- SYSTEM BLOCK VIEW: LAYER 1 (STUDENT ATTENDANCE UTILITY PORTAL) -->
+    <div id="view-student" class="hidden">
+      <div class="card text-center">
+        <h2>Welcome back, <span id="student-profile-name" style="color:var(--primary);">—</span></h2>
+        <p class="text-muted" style="margin-top: 0.25rem;">Department Classification Matrix: <span id="student-profile-dept" style="font-weight:500; color:#1f2937;">—</span></p>
+        <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid #e5e7eb;">
+        
+        <div style="margin-bottom: 1rem;">
+          <p style="font-weight: 500;">Today's Log Tracking State Check:</p>
+          <span id="lbl-today-status" class="status-badge">Processing state telemetry...</span>
+        </div>
+        
+        <div class="camera-box">
+          <video id="video" autoplay playsinline></video>
+          <canvas id="photo-canvas" width="320" height="240"></canvas>
+        </div>
+        
+        <p id="lbl-gps-diagnostic" class="text-muted" style="font-size: 0.85rem; margin-bottom: 1.5rem; font-style: italic;">Awaiting operations deployment hooks...</p>
+        
+        <div style="display: flex; gap: 1rem; max-width: 480px; margin: 0 auto;">
+          <button id="btn-mark-entry" class="btn btn-success" onclick="actions.processAttendanceTracking('entry')">
+            <span class="material-icons">login</span> Sign-In Entry
+          </button>
+          <button id="btn-mark-exit" class="btn btn-danger" onclick="actions.processAttendanceTracking('exit')">
+            <span class="material-icons">logout</span> Sign-Out Exit
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SYSTEM BLOCK VIEW: LAYER 2 (INSTITUTIONAL ADMINISTRATIVE CONTROL PANEL) -->
+    <div id="view-admin" class="hidden">
+      <div class="grid-stats">
+        <div class="stat-card">Total Cohort <div id="stat-total" class="stat-num">0</div></div>
+        <div class="stat-card val-present">Present Active <div id="stat-present" class="stat-num">0</div></div>
+        <div class="stat-card">Pending Exit <div id="stat-entry-only" class="stat-num">0</div></div>
+        <div class="stat-card val-suspicious">Geofence Outliers <div id="stat-suspicious" class="stat-num">0</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Live Operational Activity Ledger Feed</h3>
+        <div class="table-wrapper">
+          <table id="tbl-live-feed">
+            <thead><tr><th>Registration ID</th><th>Activity Capture Timestamp</th><th>Assessment Flag</th></tr></thead>
+            <tbody><tr><td colspan="3" class="text-center text-muted">Awaiting stream transmission packets...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REGENERATED EXTENSION SUBMODULAR SYSTEMS -->
+      <div id="admin-extensions" class="card" style="margin-top: 1.5rem;">
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; overflow-x: auto;">
+          <button class="tab-btn active" onclick="adminUi.switchTab('tab-manage-students')">Manage Cohort</button>
+          <button class="tab-btn" onclick="adminUi.switchTab('tab-reports')">Report Generator</button>
+          <button class="tab-btn" onclick="adminUi.switchTab('tab-system-logs')">Security Audits</button>
+        </div>
+        
+        <!-- SUB-TAB 1: ROSTER EDIT ENGINE -->
+        <div id="tab-manage-students" class="admin-tab-content">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h3>Student Roster Structural Control</h3>
+            <button class="btn btn-success" style="width: auto; padding: 0.5rem 1rem;" onclick="adminUi.openAddStudentModal()">
+              <span class="material-icons" style="font-size: 1.1rem;">person_add</span> Register Student Profile
+            </button>
+          </div>
+          <div class="table-wrapper"><table id="tbl-students-list"><thead><tr><th>Student ID</th><th>Full Name</th><th>Roll No.</th><th>Department</th><th>Status</th><th>Actions</th></tr></thead><tbody><tr><td colspan="6" class="text-center text-muted">Loading roster data...</td></tr></tbody></table></div>
+        </div>
+
+        <!-- SUB-TAB 2: MATRIX REPORT EXTRACTION -->
+        <div id="tab-reports" class="admin-tab-content hidden">
+          <h3>Historical Attendance Ledger</h3>
+          <form id="form-report-filter" onsubmit="adminActions.generateReport(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: flex-end; margin-top: 1rem; margin-bottom: 1.5rem;">
+            <div class="form-group" style="margin-bottom:0;"><label>Start Date</label><input type="date" id="rep-start-date" class="form-control" required></div>
+            <div class="form-group" style="margin-bottom:0;"><label>End Date</label><input type="date" id="rep-end-date" class="form-control" required></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Department</label><select id="rep-dept-select" class="form-control"><option value="">All Departments</option></select></div>
+            <button type="submit" class="btn"><span class="material-icons">summarize</span> Extract Records</button>
+          </form>
+          <div class="table-wrapper"><table id="tbl-report-results"><thead><tr><th>Date</th><th>Name</th><th>Roll No.</th><th>Dept</th><th>Sign-In</th><th>Sign-Out</th><th>Status Evaluation</th></tr></thead><tbody><tr><td colspan="7" class="text-center text-muted">Awaiting query parameters...</td></tr></tbody></table></div>
+        </div>
+
+        <!-- SUB-TAB 3: IMMUTABLE AUDIT TRACE LOGS -->
+        <div id="tab-system-logs" class="admin-tab-content hidden">
+          <h3>System Audit Trail</h3>
+          <div class="table-wrapper"><table id="tbl-audit-logs"><thead><tr><th>Log Timestamp</th><th>Actor ID</th><th>Action Parameter</th><th>Diagnostic Metric</th><th>Status Code</th></tr></thead><tbody><tr><td colspan="5" class="text-center text-muted">Fetching log packets...</td></tr></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- REGISTER STUDENT PROFILE REGISTRATION MODAL CONFIGURATION OVERLAY -->
+  <div id="modal-add-student" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100000;">
+    <div class="card" style="width: 100%; max-width: 520px; margin: 1rem; max-height: 90vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3>Register New Student Entry</h3>
+        <span class="material-icons" style="cursor: pointer; color: var(--text-muted);" onclick="adminUi.closeAddStudentModal()">close</span>
+      </div>
+      <form id="form-add-student" onsubmit="adminActions.submitStudentRegistration(event)">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group"><label>Full Name</label><input type="text" id="ast-name" class="form-control" required></div>
+          <div class="form-group"><label>Roll Number</label><input type="text" id="ast-roll" class="form-control" required></div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group"><label>Department</label><input type="text" id="ast-dept" class="form-control" required></div>
+          <div class="form-group"><label>Course Track</label><input type="text" id="ast-course" class="form-control" required></div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group"><label>Current Semester</label><input type="text" id="ast-sem" class="form-control" required></div>
+          <div class="form-group"><label>Email Address</label><input type="email" id="ast-email" class="form-control" required></div>
+        </div>
+        <div class="form-group"><label>Access Token Password</label><input type="password" id="ast-pass" class="form-control" placeholder="Defaults to 123456 if empty"></div>
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <button type="button" class="btn" style="background-color: #6b7280;" onclick="adminUi.closeAddStudentModal()">Cancel</button>
+          <button type="submit" class="btn btn-success">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // CRITICAL REQUIREMENT: INSERT YOUR ACTIVE EXECUTION WEB APP ACCESSIBLE URL HERE
+    // =========================================================================
+    const API_URL = "https://script.google.com/macros/s/AKfycbzFdJ5CN0Dr6tSRHw7a-SOgAlRlIcqWDXFyszw2ywoXS5s1LKs0VN_BpqbSksMrDZev/exec";
+
+    const STATE = { token: null, role: null, user: null, videoStream: null };
+
+    // Centralized Data Communication Layer mapping requests natively over CORS
+    async function makeApiCall(bodyPayload) {
+      const response = await fetch(`${API_URL}?origin=${encodeURIComponent(window.location.origin)}`, {
+        method: "POST",
+        mode: "cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(bodyPayload)
+      });
+      return await response.json();
+    }
+
+    const ui = {
+      showToast(msg, type = 'success') {
+        const t = document.getElementById('toast'); t.innerText = msg;
+        t.style.backgroundColor = type === 'success' ? 'var(--success)' : type === 'warning' ? 'var(--warning)' : 'var(--danger)';
+        t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000);
+      },
+      switchView(viewName) {
+        document.getElementById('view-login').classList.add('hidden');
+        document.getElementById('view-student').classList.add('hidden');
+        document.getElementById('view-admin').classList.add('hidden');
+        document.getElementById('app-header').classList.add('hidden');
+        
+        if (viewName === 'login') { document.getElementById('view-login').classList.remove('hidden'); ui.killCameraStream(); }
+        else if (viewName === 'student') { document.getElementById('view-student').classList.remove('hidden'); document.getElementById('app-header').classList.remove('hidden'); ui.initiateCameraStream(); }
+        else if (viewName === 'admin') { document.getElementById('view-admin').classList.remove('hidden'); document.getElementById('app-header').classList.remove('hidden'); ui.killCameraStream(); }
+      },
+      initiateCameraStream() {
+        const video = document.getElementById('video');
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: "user" }, audio: false })
+            .then(stream => { STATE.videoStream = stream; video.srcObject = stream; })
+            .catch(err => ui.showToast("Camera access rejected or configuration missing: " + err.message, "danger"));
+        }
+      },
+      killCameraStream() { if (STATE.videoStream) { STATE.videoStream.getTracks().forEach(track => track.stop()); STATE.videoStream = null; } }
+    };
+
+    const actions = {
+      async executeLogin(e) {
+        e.preventDefault();
+        try {
+          const res = await makeApiCall({
+            action: "login",
+            username: document.getElementById('login-username').value,
+            password: document.getElementById('login-password').value,
+            role: document.getElementById('login-role').value
+          });
+          if (res.success) {
+            STATE.token = res.token; STATE.role = res.role; STATE.user = res.user;
+            document.getElementById('header-title').innerText = `${res.role.toUpperCase()} Core Grid Operations`;
+            ui.showToast(`Logged into ${res.role.toUpperCase()} Workspace domain.`);
+            if (res.role === 'admin') { ui.switchView('admin'); actions.loadAdminDashboard(); }
+            else {
+              document.getElementById('student-profile-name').innerText = res.user.name;
+              document.getElementById('student-profile-dept').innerText = res.user.department;
+              ui.switchView('student'); actions.loadStudentStatusPanel();
+            }
+          } else { ui.showToast(res.message, "danger"); }
+        } catch(err) { ui.showToast("API Endpoint Validation Failure: " + err.message, "danger"); }
+      },
+
+      async loadStudentStatusPanel() {
+        try {
+          const res = await makeApiCall({ action: "getTodayStatus", token: STATE.token });
+          const badge = document.getElementById('lbl-today-status'); badge.className = "status-badge";
+          if (res.success && res.record) {
+            if (res.record.exitTime) {
+              badge.innerText = `SESSION CLOSED [${res.record.status}]`;
+              badge.classList.add(res.record.status === 'PRESENT' ? 'badge-present' : 'badge-suspicious');
+              document.getElementById('btn-mark-entry').disabled = true; document.getElementById('btn-mark-exit').disabled = true;
+            } else {
+              badge.innerText = `SIGNED IN ENTRY [${res.record.entryTime}]`; badge.classList.add('badge-entry');
+              document.getElementById('btn-mark-entry').disabled = true; document.getElementById('btn-mark-exit').disabled = false;
+            }
+          } else {
+            badge.innerText = "NO LOGGED ENTRIES DETECTED TODAY";
+            document.getElementById('btn-mark-entry').disabled = false; document.getElementById('btn-mark-exit').disabled = true;
+          }
+        } catch(e) { ui.showToast("Failed to pull status engine maps.", "danger"); }
+      },
+
+      processAttendanceTracking(type) {
+        document.getElementById('lbl-gps-diagnostic').innerText = "Locking localization coordinates...";
+        navigator.geolocation.getCurrentPosition(
+          position => { actions.transmitAttendance(type, actions.compilePayload(position.coords.latitude, position.coords.longitude, position.coords.accuracy, 'browser_high_accuracy')); },
+          err => {
+            ui.showToast("High accuracy localization lock dropped. Processing fallback vector...", "warning");
+            actions.transmitAttendance(type, actions.compilePayload(0.0, 0.0, 999999, 'fallback'));
+          },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      },
+
+      compilePayload(lat, lng, accuracy, source) {
+        const video = document.getElementById('video'); const canvas = document.getElementById('photo-canvas'); const ctx = canvas.getContext('2d');
+        let b64Image = ""; let mime = "";
+        try {
+          if (STATE.videoStream) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            b64Image = canvas.toDataURL('image/jpeg', 0.8).replace(/^data:image\/(png|jpeg);base64,/, ""); mime = "image/jpeg";
+          }
+        } catch(e) { console.error("Canvas parsing drop.", e); }
+        return { lat: lat, lng: lng, accuracy: accuracy, gpsSource: source, imageB64: b64Image, imageMime: mime };
+      },
+
+      async transmitAttendance(type, payload) {
+        document.getElementById('lbl-gps-diagnostic').innerText = "Transmitting authentication packet to cloud layers...";
+        try {
+          const res = await makeApiCall({ action: type === 'entry' ? "submitEntry" : "submitExit", token: STATE.token, payload: payload });
+          if (res.success) { ui.showToast(res.message, "success"); actions.loadStudentStatusPanel(); }
+          else { ui.showToast(res.message, "danger"); document.getElementById('lbl-gps-diagnostic').innerText = "Transaction halted: " + res.message; }
+        } catch(err) { ui.showToast("Network delivery drop: " + err.message, "danger"); }
+      },
+
+      async loadAdminDashboard() {
+        try {
+          const res = await makeApiCall({ action: "getDashboardStats", token: STATE.token });
+          if (res.success) {
+            document.getElementById('stat-total').innerText = res.data.totalStudents;
+            document.getElementById('stat-present').innerText = res.data.present;
+            document.getElementById('stat-entry-only').innerText = res.data.entryOnly;
+            document.getElementById('stat-suspicious').innerText = res.data.suspicious;
+            const tbody = document.querySelector('#tbl-live-feed tbody'); tbody.innerHTML = "";
+            if (res.data.liveRecords.length === 0) { tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No entries recorded today.</td></tr>`; return; }
+            res.data.liveRecords.forEach(rec => {
+              const badgeClass = rec.status === 'SUSPICIOUS' ? 'badge-suspicious' : rec.status === 'PRESENT' ? 'badge-present' : 'badge-entry';
+              const row = document.createElement('tr');
+              row.innerHTML = `<td><code>${rec.studentId}</code></td><td>${rec.entryTime || '—'}</td><td><span class="status-badge ${badgeClass}">${rec.status}</span></td>`;
+              tbody.appendChild(row);
+            });
+            adminActions.loadRoster();
+          }
+        } catch(e) { console.error(e); }
+      },
+
+      async executeLogout() {
+        try { await makeApiCall({ action: "logout", token: STATE.token, payload: { userId: STATE.user ? STATE.user.id : '' } }); } catch(e){}
+        STATE.token = null; STATE.role = null; STATE.user = null; ui.showToast("Session closed safely."); ui.switchView('login');
+      }
+    };
+
+    const adminUi = {
+      switchTab(tabId) {
+        document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.remove('hidden'); event.currentTarget.classList.add('active');
+        if (tabId === 'tab-manage-students') adminActions.loadRoster();
+        if (tabId === 'tab-reports') adminActions.loadReportFilters();
+        if (tabId === 'tab-system-logs') adminActions.loadSystemAudits();
+      },
+      openAddStudentModal() { document.getElementById('modal-add-student').classList.remove('hidden'); },
+      closeAddStudentModal() { document.getElementById('modal-add-student').classList.add('hidden'); document.getElementById('form-add-student').reset(); }
+    };
+
+    const adminActions = {
+      async loadRoster() {
+        const res = await makeApiCall({ action: "getAllStudents", token: STATE.token });
+        if (!res.success) return;
+        const tbody = document.querySelector('#tbl-students-list tbody'); tbody.innerHTML = "";
+        res.data.students.forEach(stu => {
+          const row = document.createElement('tr');
+          const targetStatus = stu.status === 'active' ? 'deactivate' : 'active';
+          const statusIcon = stu.status === 'active' ? 'toggle_on' : 'toggle_off';
+          row.innerHTML = `<td><code>${stu.id}</code></td><td><strong>${stu.name}</strong></td><td>${stu.roll}</td><td>${stu.department}</td><td><span class="material-icons" style="color:${stu.status === 'active' ? 'var(--success)' : 'var(--text-muted)'};">${statusIcon}</span></td><td><span class="material-icons action-icon" style="color:var(--warning);" title="Reset Password" onclick="adminActions.triggerPasswordReset('${stu.id}')">lock_reset</span><span class="material-icons action-icon" style="color:${stu.status==='active'?'var(--danger)':'var(--success)'};" title="Toggle Status" onclick="adminActions.toggleStatus('${stu.id}', '${targetStatus}')">power_settings_new</span></td>`;
+          tbody.appendChild(row);
+        });
+      },
+      async submitStudentRegistration(e) {
+        e.preventDefault();
+        const payload = { name: document.getElementById('ast-name').value, roll: document.getElementById('ast-roll').value, department: document.getElementById('ast-dept').value, course: document.getElementById('ast-course').value, semester: document.getElementById('ast-sem').value, email: document.getElementById('ast-email').value, password: document.getElementById('ast-pass').value };
+        const res = await makeApiCall({ action: "addStudent", token: STATE.token, payload: payload });
+        if (res.success) { ui.showToast(res.message, "success"); adminUi.closeAddStudentModal(); adminActions.loadRoster(); } else { ui.showToast(res.message, "danger"); }
+      },
+      async toggleStatus(id, status) {
+        if(!confirm(`Modify student tracking status layout parameters for ${id}?`)) return;
+        const res = await makeApiCall({ action: "setStudentStatus", token: STATE.token, payload: { id, status } });
+        ui.showToast(res.message); adminActions.loadRoster();
+      },
+      async triggerPasswordReset(id) {
+        const newPassword = prompt("Assign new access password token structural value:"); if (!newPassword) return;
+        const res = await makeApiCall({ action: "resetStudentPassword", token: STATE.token, payload: { id, newPassword } });
+        ui.showToast(res.message, "success");
+      },
+      async loadReportFilters() {
+        const res = await makeApiCall({ action: "getDepartments", token: STATE.token });
+        if(res.success) {
+          const s = document.getElementById('rep-dept-select'); s.innerHTML = '<option value="">All Departments</option>';
+          res.data.departments.forEach(d => { s.innerHTML += `<option value="${d}">${d}</option>`; });
+        }
+      },
+      async generateReport(e) {
+        e.preventDefault();
+        const tbody = document.querySelector('#tbl-report-results tbody'); tbody.innerHTML = "<tr><td colspan='7' class='text-center'>Running parameters check...</td></tr>";
+        const res = await makeApiCall({ action: "generateReport", token: STATE.token, payload: { start: document.getElementById('rep-start-date').value, end: document.getElementById('rep-end-date').value, dept: document.getElementById('rep-dept-select').value } });
+        if(res.success) {
+          tbody.innerHTML = ""; if(res.data.rows.length===0) { tbody.innerHTML="<tr><td colspan='7' class='text-center text-muted'>Empty dataset matches matching criteria.</td></tr>"; return; }
+          res.data.rows.forEach(r => {
+            const badge = r.status === 'SUSPICIOUS' ? 'badge-suspicious' : r.status === 'PRESENT' ? 'badge-present' : 'badge-entry';
+            tbody.innerHTML += `<tr><td><code>${r.date}</code></td><td>${r.name}</td><td>${r.roll}</td><td>${r.department}</td><td>${r.entryTime||'—'}</td><td>${r.exitTime||'—'}</td><td><span class='status-badge ${badge}'>${r.status}</span></td></tr>`;
+          });
+        }
+      },
+      async loadSystemAudits() {
+        const res = await makeApiCall({ action: "getSystemLogs", token: STATE.token, payload: { maxRows: 50 } });
+        if(!res.success) return;
+        const tbody = document.querySelector('#tbl-audit-logs tbody'); tbody.innerHTML = "";
+        res.data.logs.forEach(log => {
+          tbody.innerHTML += `<tr><td><small>${new Date(log.timestamp).toLocaleString()}</small></td><td><code>${log.userId}</code></td><td><strong>${log.action}</strong></td><td><span class='text-muted' style='font-size:0.8rem;'>${log.ip}</span></td><td><span style='font-weight:bold; color:${log.status==='SUCCESS'?'var(--success)':'var(--warning)'}'>${log.status}</span></td></tr>`;
+        });
+      }
+    };
+  </script>
+</body>
+</html>
