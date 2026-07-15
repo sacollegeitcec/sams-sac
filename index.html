@@ -129,10 +129,11 @@
   <div id="toast">Operational Engine Packet Alert</div>
 
   <header id="app-header" class="hidden">
-  <div style="display:flex; align-items:center; gap:0.75rem;">
-    <img src="logo.png" alt="Logo" style="height: 35px; width: 35px; object-fit: contain; border-radius: 50%; background: #ffffff;">
-    <h1 id="header-title" style="font-size: 1.25rem; font-weight:700; letter-spacing:0.5px;">Sontali Anchalik College ERP</h1>
-  </div>
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <!-- UPDATED: WORKSPACE NAVIGATION LOGO IMAGE MAP -->
+      <img src="logo.png" alt="Logo" style="height: 35px; width: 35px; object-fit: contain; border-radius: 50%; background: #ffffff;">
+      <h1 id="header-title" style="font-size: 1.25rem; font-weight:700; letter-spacing:0.5px;">Sontali Anchalik College ERP</h1>
+    </div>
     <button class="btn-logout" onclick="actions.executeLogout()">
       <span class="material-icons" style="font-size:1.1rem;">logout</span> Sign Out Terminal
     </button>
@@ -143,11 +144,11 @@
     <div id="view-login" class="auth-wrapper-container" style="margin: 3rem auto;">
       <div class="premium-auth-card">
         <div class="college-header-banner">
-          <div class="college-header-banner">
-  <div class="college-logo-container">
-    <img src="logo.png" alt="College Logo" style="width:90px; height:90px; object-fit: contain; border-radius: 50%; border: 3px solid var(--accent-gold); background: #ffffff; padding: 4px;">
-  </div>
-  <h1 class="college-title">Sontali Anchalik College</h1>
+          <div class="college-logo-container">
+            <!-- UPDATED: MAIN PORTAL LOGIN PAGE LOGO IMAGE ENGINE -->
+            <img src="logo.png" alt="College Logo" style="width:90px; height:90px; object-fit: contain; border-radius: 50%; border:3px solid var(--accent-gold); background: #ffffff; padding: 4px;">
+          </div>
+          <h1 class="college-title">Sontali Anchalik College</h1>
           <div class="college-subtitle">Kamrup, Assam</div>
           <span class="system-tag">Smart Attendance System Platform</span>
         </div>
@@ -659,13 +660,12 @@
         });
       },
 
-            processRosterFiltering() {
+      processRosterFiltering() {
         const query = document.getElementById('filter-student-search').value.toLowerCase().trim();
         const dept = document.getElementById('filter-student-dept').value;
         const sem = document.getElementById('filter-student-sem').value;
         
         STATE.filteredStudents = STATE.cachedStudents.filter(s => {
-          // Wrap properties in String() safely to handle numeric IDs and Roll numbers without throwing crashes
           const sName = s.name ? String(s.name).toLowerCase() : "";
           const sId = s.id ? String(s.id).toLowerCase() : "";
           const sRoll = s.roll ? String(s.roll).toLowerCase() : "";
@@ -677,7 +677,6 @@
           return mQuery && mDept && mSem;
         });
         
-        // ROBUST ALPHANUMERIC CLASSIFICATION MATRICES ENGINE
         STATE.filteredStudents.sort((a, b) => {
           let key = STATE.sort.key;
           let valA = a[key] !== undefined ? String(a[key]) : "";
