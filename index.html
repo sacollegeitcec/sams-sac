@@ -48,6 +48,7 @@
     
     .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.65rem 1.25rem; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; gap: 0.5rem; font-size: 0.9rem; transition: all 0.2s; }
     .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn:disabled { background-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; transform: none; }
     .btn-success { background-color: var(--success); }
     .btn-danger { background-color: var(--danger); }
     .btn-secondary { background-color: #64748b; }
@@ -102,7 +103,7 @@
     .camera-box {
       width: 100%;
       max-width: 480px;
-      margin: 0 auto 1.5rem auto;
+      margin: 0 auto 1rem auto;
       overflow: hidden;
       border-radius: 12px;
       border: 2px solid #cbd5e1;
@@ -130,7 +131,6 @@
 
   <header id="app-header" class="hidden">
     <div style="display:flex; align-items:center; gap:0.75rem;">
-      <!-- UPDATED: WORKSPACE NAVIGATION LOGO IMAGE MAP -->
       <img src="logo.png" alt="Logo" style="height: 35px; width: 35px; object-fit: contain; border-radius: 50%; background: #ffffff;">
       <h1 id="header-title" style="font-size: 1.25rem; font-weight:700; letter-spacing:0.5px;">Sontali Anchalik College ERP</h1>
     </div>
@@ -145,7 +145,6 @@
       <div class="premium-auth-card">
         <div class="college-header-banner">
           <div class="college-logo-container">
-            <!-- UPDATED: MAIN PORTAL LOGIN PAGE LOGO IMAGE ENGINE -->
             <img src="logo.png" alt="College Logo" style="width:90px; height:90px; object-fit: contain; border-radius: 50%; border:3px solid var(--accent-gold); background: #ffffff; padding: 4px;">
           </div>
           <h1 class="college-title">Sontali Anchalik College</h1>
@@ -169,7 +168,7 @@
                 <option value="admin">Institutional System Administrator</option>
               </select>
             </div>
-            <button type="submit" class="btn btn-auth-submit" style="margin-top:1.5rem; width:100%;">
+            <button type="submit" id="btn-login-submit" class="btn btn-auth-submit" style="margin-top:1.5rem; width:100%;">
               <span class="material-icons" style="font-size: 18px;">lock_open</span> Authenticate Credentials
             </button>
           </form>
@@ -193,7 +192,12 @@
           <canvas id="photo-canvas" width="320" height="240"></canvas>
         </div>
         
-        <p id="lbl-gps-diagnostic" class="text-muted" style="font-size: 0.85rem; margin-bottom: 1.5rem; font-style: italic;">Awaiting operations deployment hooks...</p>
+        <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+          <p id="lbl-gps-diagnostic" class="text-muted" style="font-size: 0.85rem; font-style: italic; margin-bottom: 0;">Awaiting operations deployment hooks...</p>
+          <button type="button" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="actions.requestGPSLocation()">
+            <span class="material-icons" style="font-size: 14px;">my_location</span> Refresh GPS
+          </button>
+        </div>
         
         <div style="display: flex; gap: 1rem; max-width: 480px; margin: 0 auto;">
           <button id="btn-mark-entry" class="btn btn-success" style="flex:1; padding:0.85rem;" onclick="actions.processAttendanceTracking('entry')">
@@ -438,7 +442,7 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyYmo0HoNBarpB5CpIcENlsHKvZOgzhTCYVByUjp_cebOuxkfMsEKosjVAV4ZLjncuCng/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbyNVysOyAGuyTpQL3NDcqd1VnwWTxvYKKIrwXQFa6mZbdGahVumVcyjXbG6iBFjFYig6g/exec"; 
 
     const STATE = {
       token: localStorage.getItem("att_token") || null,
@@ -454,7 +458,9 @@
         ledgerPage: 1,
         ledgerLimit: 10
       },
-      sort: { key: 'name', dir: 'asc' }
+      sort: { key: 'name', dir: 'asc' },
+      videoStream: null,
+      lastCoords: null
     };
 
     function showToast(msg, isErr=false) {
@@ -464,6 +470,25 @@
       t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 4000);
     }
+
+    // Helper: Lock or Unlock specific elements to prevent double submission
+    function setElementLoading(elementId, isLoading, normalText = "") {
+      const el = document.getElementById(elementId);
+      if(!el) return;
+      if (isLoading) {
+        el.disabled = true;
+        el.dataset.oldHtml = el.innerHTML;
+        el.innerHTML = `<span style="display:inline-flex; align-items:center; gap:0.5rem;"><span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Processing...</span>`;
+      } else {
+        el.disabled = false;
+        el.innerHTML = el.dataset.oldHtml || normalText;
+      }
+    }
+
+    // Dynamic Spinner CSS Injection for API buttons
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+    document.head.appendChild(styleSheet);
 
     async function makeApiCall(packet) {
       try {
@@ -489,7 +514,10 @@
         const r = document.getElementById('login-role').value;
         
         showToast("Verifying identity token matrix mapping...");
+        setElementLoading('btn-login-submit', true);
+
         const res = await makeApiCall({ action: "login", username: u, password: p, role: r });
+        setElementLoading('btn-login-submit', false, `<span class="material-icons" style="font-size: 18px;">lock_open</span> Authenticate Credentials`);
         
         if (res.success) {
           STATE.token = res.token;
@@ -509,6 +537,7 @@
       executeLogout() {
         if(STATE.videoStream) {
           STATE.videoStream.getTracks().forEach(t => t.stop());
+          STATE.videoStream = null;
         }
         makeApiCall({ action: "logout", token: STATE.token, payload: { userId: STATE.user?.id } });
         STATE.token = null; STATE.role = null; STATE.user = null;
@@ -543,23 +572,33 @@
             document.getElementById('lbl-gps-diagnostic').innerText = "Camera missing hardware validation keys.";
           });
           
+        this.requestGPSLocation();
+      },
+
+      requestGPSLocation() {
+        const diag = document.getElementById('lbl-gps-diagnostic');
+        diag.innerText = "Requesting telemetry coordinates...";
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             pos => {
-              document.getElementById('lbl-gps-diagnostic').innerText = `GPS Grid Locked: Accurately mapping within ${Math.round(pos.coords.accuracy)} meters variance threshold context.`;
+              diag.innerText = `GPS Grid Locked: Within ${Math.round(pos.coords.accuracy)}m threshold context.`;
               STATE.lastCoords = pos.coords;
             },
             err => {
-              document.getElementById('lbl-gps-diagnostic').innerText = "GPS Lat/Lng Hardware Engine Fault: " + err.message;
+              diag.innerText = "GPS Engine Fault: " + err.message;
+              showToast("Failed to retrieve GPS. Please enable Location Services.", true);
             },
-            { enableHighAccuracy: true }
+            { enableHighAccuracy: true, timeout: 10000 }
           );
+        } else {
+          diag.innerText = "GPS Hardware Unrecognized by browser.";
         }
       },
 
       async processAttendanceTracking(type) {
         if (!STATE.lastCoords) {
           showToast("Awaiting GPS synchronization parameters alignment. Standby.", true);
+          this.requestGPSLocation();
           return;
         }
         
@@ -569,9 +608,13 @@
         ctx.drawImage(video, 0, 0, 320, 240);
         const imageB64 = canvas.toDataURL('image/jpeg', 0.85);
         
-        showToast(`Transmitting telemetry packets for ${type} validation mapping...`);
-        const act = type === 'entry' ? 'submitEntry' : 'submitExit';
+        const btnId = type === 'entry' ? 'btn-mark-entry' : 'btn-mark-exit';
+        const origText = type === 'entry' ? `<span class="material-icons">login</span> Sign-In Entry` : `<span class="material-icons">logout</span> Sign-Out Exit`;
         
+        showToast(`Transmitting telemetry packets for ${type} validation mapping...`);
+        setElementLoading(btnId, true);
+        
+        const act = type === 'entry' ? 'submitEntry' : 'submitExit';
         const res = await makeApiCall({
           action: act,
           token: STATE.token,
@@ -583,6 +626,8 @@
             imageB64: imageB64
           }
         });
+        
+        setElementLoading(btnId, false, origText);
         
         if(res.success) {
           showToast(res.message);
@@ -691,7 +736,6 @@
         adminActions.renderRosterTable();
       },
 
-
       sortRoster(key) {
         if(STATE.sort.key === key) {
           STATE.sort.dir = STATE.sort.dir === 'asc' ? 'desc' : 'asc';
@@ -764,8 +808,11 @@
         
         const action = id ? "updateStudent" : "addStudent";
         showToast("Synchronizing profile modifications across relational index arrays...");
+        setElementLoading('btn-crud-save-text', true);
         
         const res = await makeApiCall({ action, token: STATE.token, payload });
+        setElementLoading('btn-crud-save-text', false, "Synchronize Records");
+
         if(res.success) {
           showToast(res.message);
           adminUi.closeStudentModal();
@@ -833,7 +880,11 @@
         const dept = document.getElementById('rep-dept-select').value;
         
         showToast("Scanning core archival logging matrices...");
+        setElementLoading('btn-query-records', true);
+
         const res = await makeApiCall({ action: "generateReport", token: STATE.token, payload: { start, end, dept } });
+        setElementLoading('btn-query-records', false, `<span class="material-icons">search</span> Query Records`);
+
         if(res.success) {
           STATE.cachedLedger = res.data.rows;
           adminActions.processLedgerFiltering();
@@ -996,10 +1047,15 @@
           adminActions.syncRosterDataset();
         } else if(tabId === 'tab-reports') {
           document.getElementById('btn-tab-ledger').classList.add('active');
+          this.initializeReportDates();
         } else if(tabId === 'tab-system-logs') {
           document.getElementById('btn-tab-logs').classList.add('active');
           adminActions.loadAuditTrace();
         }
+      },
+
+      initializeReportDates() {
+        
       },
 
       triggerBulkFileInput() { document.getElementById('bulk-student-csv').click(); },
