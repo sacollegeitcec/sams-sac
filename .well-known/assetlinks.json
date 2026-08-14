@@ -1,1 +1,8 @@
-
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.sacollegeitcec.twa",
+        "sha256_cert_fingerprints": ["BC:9F:B6:F7:1F:C8:3C:55:53:B2:DF:E2:02:5C:5C:7F:0C:8E:2B:A8:7C:51:BA:5A:EF:96:DF:50:7F:5B:68:34"]
+      }
+    }]
