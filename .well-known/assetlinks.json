@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "io.github.sacollegeitcec.twa",
-        "sha256_cert_fingerprints": ["BC:9F:B6:F7:1F:C8:3C:55:53:B2:DF:E2:02:5C:5C:7F:0C:8E:2B:A8:7C:51:BA:5A:EF:96:DF:50:7F:5B:68:34"]
+        "sha256_cert_fingerprints": ["FA:73:51:CA:97:DE:49:FD:6C:44:2F:6F:8F:31:FF:18:FF:8C:FB:8F:CC:C1:B4:A8:63:A4:F7:83:34:AA:C9:63"]
       }
     }]
